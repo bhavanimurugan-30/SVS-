@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SVS-SHOP FAST</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; background: #fafafa; }
+  header { background: #111; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+  nav ul { list-style: none; display: flex; gap: 12px; padding: 0; margin: 0; align-items: center; }
+  nav ul li a { color: white; text-decoration: none; font-weight: bold; cursor: pointer; }
+  .search-box input { padding: 6px; width: 180px; }
+  .search-box button { padding: 6px 10px; }
+  .page { padding: 20px; }
+  .page-heading { font-size: 24px; font-weight: bold; color: #ff69b4; margin-bottom: 10px; }
+  .product-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-top: 15px; }
+  .product-card { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.06); text-align: center; }
+  .product-card img { width: 100%; border-radius: 8px; object-fit: cover; height: 140px; }
+  .review-item, .wishlist-item, .order-item, .cart-item { display: flex; justify-content: space-between; align-items: center; background: #ffe6f0; padding: 10px; border-radius: 5px; margin-bottom: 8px; }
+  button.small { background: #ff4d88; border: none; color: white; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+  .btn-secondary { background: #444; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; margin-left: 8px; }
+  .form-input { width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ddd; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .user-badge { color: #ff69b4; font-weight: bold; }
+  .small-input { width: 60px; padding:4px; border-radius:4px; border:1px solid #ccc; }
+  @media (max-width: 600px) { nav ul { gap: 8px; font-size: 14px; } .search-box input { width: 120px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <nav>
+    <ul>
+      <li><a onclick="showPage('home')">Home</a></li>
+      <li><a onclick="showPage('products')">Products</a></li>
+      <li><a onclick="showPage('cart')">Cart</a></li>
+      <li><a onclick="showPage('orders')">Orders</a></li>
+      <li><a onclick="showPage('wishlist')">Wishlist</a></li>
+      <li><a onclick="showPage('reviews')">Reviews</a></li>
+      <li><a onclick="showPage('register')">Register</a></li>
+      <li><a onclick="showPage('login')">Login</a></li>
+      <li><a onclick="showPage('about')">About Us</a></li>
+      <li><a onclick="showPage('contact')">Contact Us</a></li>
+    </ul>
+  </nav>
+
+  <div class="header-right">
+    <div class="search-box">
+      <input type="text" id="search" placeholder="Search products..." />
+      <button onclick="searchProducts()">Search</button>
+    </div>
+    <div id="userArea"></div>
+  </div>
+</header>
+
+<div id="content"></div>
+
+<script>
+
+const products = [
+  { id: 1, name: "Red Frok", category: "dress", img: "Screenshot 2025-11-14 192047.png", price: 1299 },
+  { id: 2, name: "Men Wear", category: "dress", img: "men.JPG", price: 1299 },
+  { id: 3, name: "Women Wear", category: "dress", img: "women.png", price: 1299 },
+  { id: 4, name: "Handbag", category: "accessories", img: "Screenshot 2025-11-14 192239.png", price: 799 },
+  { id: 5, name: "Smart Watch", category: "gadgets", img:"Screenshot 2025-11-14 192421.png", price: 2999 },
+  { id: 6, name: "Speaker", category: "gadgets", img: "speaker.jpg", price:600 },
+  { id: 7, name: "Mobile Phone", category: "gadgets", img: "phone.png", price: 9999 },
+  { id: 8, name: "Shoes", category: "accessories", img: "shoe.jpg", price: 599 },
+  { id: 9, name: "Wallet", category: "accessories", img: "wallet.jpg", price: 599 }
+];
+
+
+
+const LS_KEYS = {
+  USERS: 'shopfast_users',
+  CURRENT: 'shopfast_currentUser',     
+  ORDERS: 'shopfast_orders',          
+  WISHLIST_USER: 'shopfast_wishlist_user', 
+  WISHLIST_GUEST: 'shopfast_wishlist_guest', 
+  CART: 'shopfast_cart'               
+};
+
+function loadJSON(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e) { return fallback; }
+}
+function saveJSON(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+if (!loadJSON(LS_KEYS.USERS, null)) saveJSON(LS_KEYS.USERS, []);
+if (!loadJSON(LS_KEYS.ORDERS, null)) saveJSON(LS_KEYS.ORDERS, []);
+if (!loadJSON(LS_KEYS.WISHLIST_USER, null)) saveJSON(LS_KEYS.WISHLIST_USER, {});
+if (!loadJSON(LS_KEYS.WISHLIST_GUEST, null)) saveJSON(LS_KEYS.WISHLIST_GUEST, []);
+if (!loadJSON(LS_KEYS.CART, null)) saveJSON(LS_KEYS.CART, []);
+
+
+function getUsers() { return loadJSON(LS_KEYS.USERS, []); }
+function setUsers(u) { saveJSON(LS_KEYS.USERS, u); }
+function getCurrentUserEmail() { return localStorage.getItem(LS_KEYS.CURRENT) || null; }
+function setCurrentUserEmail(email) { if (email) localStorage.setItem(LS_KEYS.CURRENT, email); else localStorage.removeItem(LS_KEYS.CURRENT); }
+function getUserByEmail(email) { return getUsers().find(u => u.email === email) || null; }
+
+
+function getGuestWishlist() { return loadJSON(LS_KEYS.WISHLIST_GUEST, []); }
+function saveGuestWishlist(arr) { saveJSON(LS_KEYS.WISHLIST_GUEST, arr); }
+function getUserWishlistMap() { return loadJSON(LS_KEYS.WISHLIST_USER, {}); }
+function saveUserWishlistMap(map) { saveJSON(LS_KEYS.WISHLIST_USER, map); }
+
+
+function getCart() { return loadJSON(LS_KEYS.CART, []); }
+function saveCart(cart) { saveJSON(LS_KEYS.CART, cart); }
+function addToCart(productId, qty = 1) {
+  const cart = getCart();
+  const item = cart.find(i => i.productId === productId);
+  if (item) item.qty = Math.min(99, item.qty + qty);
+  else cart.push({ productId, qty });
+  saveCart(cart);
+  alert('Added to cart');
+  renderCart();
+}
+
+
+function getAllOrders() { return loadJSON(LS_KEYS.ORDERS, []); }
+function saveAllOrders(arr) { saveJSON(LS_KEYS.ORDERS, arr); }
+
+function showPage(page) {
+  if (page === "home") renderHome();
+  else if (page === "products") renderProducts();
+  else if (page === "cart") renderCart();
+  else if (page === "orders") renderOrders();
+  else if (page === "wishlist") renderWishlist();
+  else if (page === "reviews") renderReviews();
+  else if (page === "register") renderRegister();
+  else if (page === "login") renderLogin();
+  else if (page === "about") renderAbout();
+  else if (page === "contact") renderContact();
+  updateHeaderUserArea();
+}
+
+
+function renderHome() {
+  document.getElementById("content").innerHTML = `
+    <div class='page'>
+      <h2 class='page-heading'>SVS</h2>
+      <p>Welcome to SVS-Shop fast. Add items to wishlist or cart without logging in. Orders require login.</p>
+      <p>Start at <strong>Products</strong>.</p>
+    </div>`;
+}
+
+function renderProducts(filter = "all", matched = null) {
+  let list = matched || products.filter(p => filter === "all" ? true : p.category === filter);
+  let html = `<div class='page'><h2 class='page-heading'>Products</h2>
+    <div style="margin-bottom:10px">
+      <button class="btn-secondary" onclick="renderProducts('all')">All</button>
+      <button class="btn-secondary" onclick="renderProducts('dress')">Dress</button>
+      <button class="btn-secondary" onclick="renderProducts('accessories')">Accessories</button>
+      <button class="btn-secondary" onclick="renderProducts('gadgets')">Gadgets</button>
+    </div><div class='product-grid'>`;
+
+  if (list.length === 0) html += `<p>No products found.</p>`;
+  else {
+    list.forEach(p => {
+      html += `
+      <div class="product-card">
+        <img src="${p.img}" alt="${escapeHtml(p.name)}" />
+        <h3>${escapeHtml(p.name)}</h3>
+        <p>₹ ${p.price}</p>
+        <div style="display:flex; gap:8px; justify-content:center; margin-top:8px;">
+          <button class='small' onclick='toggleWishlist(${p.id})'>Wishlist</button>
+          <button class='small' onclick='addToCart(${p.id})'>Add to Cart</button>
+          <button class='small' onclick='quickOrder(${p.id})'>Order</button>
+        </div>
+      </div>`;
+    });
+  }
+  html += `</div></div>`;
+  document.getElementById("content").innerHTML = html;
+}
+
+
+function quickOrder(productId) {
+  const email = getCurrentUserEmail();
+  if (!email) { if (confirm('To place an order you must login. Go to Login?')) showPage('login'); return; }
+  const p = products.find(x => x.id === productId);
+  if (!p) return alert('Product not found');
+  const orders = getAllOrders();
+  orders.push({
+    id: 'ord_' + Date.now(),
+    productId: p.id,
+    productName: p.name,
+    price: p.price,
+    userEmail: email,
+    date: new Date().toISOString()
+  });
+  saveAllOrders(orders);
+  alert('Order placed: ' + p.name);
+  renderOrders();
+}
+
+function toggleWishlist(productId) {
+  const email = getCurrentUserEmail();
+  if (email) {
+    const map = getUserWishlistMap();
+    if (!map[email]) map[email] = [];
+    if (map[email].includes(productId)) {
+      map[email] = map[email].filter(id => id !== productId);
+      alert('Removed from your wishlist');
+    } else {
+      map[email].push(productId);
+      alert('Added to your wishlist');
+    }
+    saveUserWishlistMap(map);
+  } else {
+    let arr = getGuestWishlist();
+    if (arr.includes(productId)) {
+      arr = arr.filter(id => id !== productId);
+      alert('Removed from wishlist');
+    } else {
+      arr.push(productId);
+      alert('Added to wishlist (guest)');
+    }
+    saveGuestWishlist(arr);
+  }
+  renderWishlist();
+}
+
+function renderWishlist() {
+  const email = getCurrentUserEmail();
+  let html = `<div class='page'><h2 class='page-heading'>Wishlist</h2>`;
+
+  if (email) {
+    const map = getUserWishlistMap();
+    const ids = map[email] || [];
+    if (ids.length === 0) html += `<p>Your wishlist is empty.</p>`;
+    ids.forEach(pid => {
+      const prod = products.find(p => p.id === pid);
+      if (!prod) return;
+      html += `<div class='wishlist-item'>${escapeHtml(prod.name)} - ₹${prod.price}
+        <div>
+          <button class='small' onclick='addToCart(${prod.id})'>Add to Cart</button>
+          <button class='small' onclick='toggleWishlist(${prod.id})'>Remove</button>
+        </div></div>`;
+    });
+  } else {
+    const arr = getGuestWishlist();
+    if (arr.length === 0) html += `<p>Your wishlist is empty (guest).</p>`;
+    arr.forEach(pid => {
+      const prod = products.find(p => p.id === pid);
+      if (!prod) return;
+      html += `<div class='wishlist-item'>${escapeHtml(prod.name)} - ₹${prod.price}
+        <div>
+          <button class='small' onclick='addToCart(${prod.id})'>Add to Cart</button>
+          <button class='small' onclick='toggleWishlist(${prod.id})'>Remove</button>
+        </div></div>`;
+    });
+  }
+
+  html += `</div>`;
+  document.getElementById("content").innerHTML = html;
+}
+
+
+function renderCart() {
+  const cart = getCart();
+  let html = `<div class='page'><h2 class='page-heading'>Cart</h2>`;
+
+  if (cart.length === 0) html += `<p>Your cart is empty.</p>`;
+  let total = 0;
+  cart.forEach(item => {
+    const p = products.find(x => x.id === item.productId);
+    if (!p) return;
+    const line = p.price * item.qty;
+    total += line;
+    html += `<div class='cart-item'>
+      <div style="flex:1">${escapeHtml(p.name)} - ₹${p.price}</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="small-input" type="number" min="1" max="99" value="${item.qty}" onchange="updateCartQty(${item.productId}, this.value)">
+        <div>₹ ${line}</div>
+        <button class='small' onclick='removeCartItem(${item.productId})'>Remove</button>
+      </div>
+    </div>`;
+  });
+
+  html += `<div style="margin-top:12px;font-weight:bold">Total: ₹ ${total}</div>`;
+
+  html += `<div style="margin-top:12px">
+    <button class="small" onclick="continueShopping()">Continue Shopping</button>
+    <button class="small" onclick="checkout()">Checkout</button>
+    <button class="btn-secondary" onclick="clearCart()">Clear Cart</button>
+  </div>`;
+
+  html += `</div>`;
+  document.getElementById("content").innerHTML = html;
+}
+
+function updateCartQty(productId, qty) {
+  qty = parseInt(qty) || 1;
+  const cart = getCart();
+  const item = cart.find(i => i.productId === productId);
+  if (item) {
+    item.qty = Math.max(1, Math.min(99, qty));
+    saveCart(cart);
+  }
+  renderCart();
+}
+
+function removeCartItem(productId) {
+  let cart = getCart();
+  cart = cart.filter(i => i.productId !== productId);
+  saveCart(cart);
+  renderCart();
+}
+
+function clearCart() {
+  if (!confirm('Clear the cart?')) return;
+  saveCart([]);
+  renderCart();
+}
+
+function continueShopping() { renderProducts(); }
+
+
+function checkout() {
+  const email = getCurrentUserEmail();
+  if (!email) { if (confirm('You must login to checkout. Go to Login?')) showPage('login'); return; }
+
+  const cart = getCart();
+  if (cart.length === 0) return alert('Cart is empty');
+
+  const orders = getAllOrders();
+  cart.forEach(item => {
+    const p = products.find(x => x.id === item.productId);
+    if (!p) return;
+    orders.push({
+      id: 'ord_' + Date.now() + '_' + Math.floor(Math.random()*999),
+      productId: p.id,
+      productName: p.name,
+      price: p.price * item.qty,
+      qty: item.qty,
+      userEmail: email,
+      date: new Date().toISOString()
+    });
+  });
+  saveAllOrders(orders);
+  saveCart([]); // clear cart after checkout
+  alert('Checkout successful! Orders created.');
+  renderOrders();
+}
+
+
+function renderOrders() {
+  const email = getCurrentUserEmail();
+  let html = `<div class='page'><h2 class='page-heading'>Orders</h2>`;
+  if (!email) {
+    html += `<p>Please login to view your orders. <button class="small" onclick="showPage('login')">Login</button></p>`;
+    return document.getElementById("content").innerHTML = html + `</div>`;
+  }
+  const orders = getAllOrders().filter(o => o.userEmail === email).reverse();
+  if (orders.length === 0) html += `<p>No orders yet.</p>`;
+  orders.forEach(o => {
+    html += `<div class='order-item'>${escapeHtml(o.productName)} - ₹${o.price} <div><small>${(new Date(o.date)).toLocaleString()}</small> <button class='small' onclick='cancelOrder("${o.id}")'>Cancel</button></div></div>`;
+  });
+  html += `</div>`;
+  document.getElementById("content").innerHTML = html;
+}
+
+function cancelOrder(orderId) {
+  if (!confirm('Are you sure you want to cancel this order?')) return;
+  const email = getCurrentUserEmail();
+  if (!email) return showPage('login');
+  let orders = getAllOrders();
+  const idx = orders.findIndex(o => o.id === orderId && o.userEmail === email);
+  if (idx >= 0) {
+    orders.splice(idx, 1);
+    saveAllOrders(orders);
+    alert('Order cancelled');
+  } else alert('Order not found or not allowed');
+  renderOrders();
+}
+
+
+let reviews = loadJSON('shopfast_demo_reviews', ["Good product!", "Fast delivery!"]);
+function renderReviews() {
+  let html = `<div class='page'><h2 class='page-heading'>Reviews</h2>`;
+  reviews.forEach((item, i) => {
+    html += `<div class='review-item'>${escapeHtml(item)} <div><button class='small' onclick='removeReview(${i})'>Delete</button></div></div>`;
+  });
+  html += `<div style="margin-top:12px"><input id="newReview" class="form-input" placeholder="Write a review..."><button class="small" onclick="addReview()">Add Review</button></div></div>`;
+  document.getElementById("content").innerHTML = html;
+}
+function addReview() {
+  const t = document.getElementById('newReview').value.trim();
+  if (!t) return alert('Enter review text');
+  reviews.push(t);
+  saveJSON('shopfast_demo_reviews', reviews);
+  renderReviews();
+}
+function removeReview(i) { reviews.splice(i,1); saveJSON('shopfast_demo_reviews', reviews); renderReviews(); }
+
+
+function renderRegister() {
+  document.getElementById("content").innerHTML = `
+    <div class='page' style="max-width:420px">
+      <h2 class='page-heading'>Register</h2>
+      <input id="regName" class="form-input" placeholder='Name'>
+      <input id="regEmail" class="form-input" placeholder='Email'>
+      <input id="regPassword" class="form-input" type='password' placeholder='Password (min 4 chars)'>
+      <button class="small" onclick="submitRegister()">Submit</button>
+    </div>`;
+}
+function submitRegister() {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim().toLowerCase();
+  const password = document.getElementById('regPassword').value;
+  if (!name || !email.includes('@') || password.length < 4) {
+    alert('Please enter valid details. Password must be at least 4 characters.');
+    return;
+  }
+  const users = getUsers();
+  if (users.some(u => u.email === email)) { alert('Email already registered. Please login.'); showPage('login'); return; }
+  users.push({ name, email, password });
+  setUsers(users);
+  setCurrentUserEmail(email);
+  alert('Registration successful. Logged in as ' + name);
+  showPage('home');
+}
+function renderLogin() {
+  document.getElementById("content").innerHTML = `
+    <div class='page' style="max-width:420px">
+      <h2 class='page-heading'>Login</h2>
+      <input id="loginEmail" class="form-input" placeholder='Email'>
+      <input id="loginPassword" class="form-input" type='password' placeholder='Password'>
+      <div style="display:flex; gap:8px;">
+        <button class="small" onclick="submitLogin()">Login</button>
+        <button class="btn-secondary" onclick="showPage('register')">Create account</button>
+      </div>
+      <p style="margin-top:12px; color:#666">Demo: use registered email/password.</p>
+    </div>`;
+}
+function submitLogin() {
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+  const user = getUserByEmail(email);
+  if (!user || user.password !== password) { alert('Invalid credentials'); return; }
+  setCurrentUserEmail(email);
+  alert('Logged in as ' + user.name);
+  // optional: merge guest wishlist into user wishlist after login
+  mergeGuestWishlistToUser(email);
+  showPage('home');
+}
+function logout() { setCurrentUserEmail(null); alert('Logged out'); showPage('home'); }
+
+function updateHeaderUserArea() {
+  const el = document.getElementById('userArea');
+  const email = getCurrentUserEmail();
+  if (!el) return;
+  if (email) {
+    const user = getUserByEmail(email);
+    el.innerHTML = `<span class="user-badge">Hi, ${escapeHtml(user ? user.name : email)}</span>
+                    <button class="btn-secondary" onclick="logout()">Logout</button>`;
+  } else {
+    el.innerHTML = `<button class="btn-secondary" onclick="showPage('login')">Login</button>`;
+  }
+}
+
+
+function mergeGuestWishlistToUser(email) {
+  try {
+    const guest = getGuestWishlist();
+    if (!guest || guest.length === 0) return;
+    const map = getUserWishlistMap();
+    if (!map[email]) map[email] = [];
+    guest.forEach(pid => { if (!map[email].includes(pid)) map[email].push(pid); });
+    saveUserWishlistMap(map);
+    saveGuestWishlist([]); // clear guest wishlist after merge
+  } catch(e) { /* ignore */ }
+}
+
+
+function renderAbout() {
+  document.getElementById("content").innerHTML = `
+    <div class='page'>
+      <h2 class='page-heading'>About Us</h2>
+      <p><strong>SVS</strong> is your simple and stylish shopping platform designed for fast and smooth online shopping.</p>
+    </div>`;
+}
+
+function renderContact() {
+  document.getElementById("content").innerHTML = `
+    <div class='page' style="max-width:760px">
+      <h2 class='page-heading'>Contact Us</h2>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div style="flex:1;min-width:260px">
+          <h3>Customer Care</h3>
+          <p><strong>Phone:</strong> +91 44 1234 5678</p>
+          <p><strong>Email:</strong> support@svs-shop.com</p>
+          <p><strong>Location:</strong><br>SVS HQ, Chennai, Tamil Nadu, India</p>
+        </div>
+        <div style="flex:1;min-width:260px">
+          <h3>Send a message</h3>
+          <input id="contact_name" class="form-input" placeholder="Your name">
+          <input id="contact_email" class="form-input" placeholder="Your email">
+          <textarea id="contact_message" class="form-input" placeholder="Message" style="height:100px"></textarea>
+          <div style="display:flex;gap:8px"><button class="small" onclick="submitContactForm()">Send</button><button class="btn-secondary" onclick="clearContactForm()">Clear</button></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function submitContactForm() {
+  const name = document.getElementById('contact_name').value.trim();
+  const email = document.getElementById('contact_email').value.trim();
+  const msg = document.getElementById('contact_message').value.trim();
+  if (!name || !email.includes('@') || !msg) return alert('Fill name, valid email and message.');
+  const arr = loadJSON('svs_contact_messages', []);
+  arr.push({ id:'msg_'+Date.now(), name, email, message: msg, date: new Date().toISOString() });
+  saveJSON('svs_contact_messages', arr);
+  alert('Message submitted. We will contact you soon.');
+  clearContactForm();
+}
+function clearContactForm() { document.getElementById('contact_name').value=''; document.getElementById('contact_email').value=''; document.getElementById('contact_message').value=''; }
+
+
+function escapeHtml(str) { return String(str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function loadJSON(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch(e) { return fallback; } }
+function saveJSON(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+window.addEventListener('DOMContentLoaded', () => {
+  updateHeaderUserArea();
+  showPage('home');
+});
+</script>
+
+</body>
+</html>
